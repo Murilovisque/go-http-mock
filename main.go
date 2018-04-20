@@ -2,24 +2,22 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"regexp"
-	"sync"
+	"strings"
+
+	"github.com/Murilovisque/go-http-mock/configs"
 )
 
 func main() {
 	if len(os.Args) != 2 {
 		log.Fatal("You need to inform the configuration file")
 	}
-	httpConfig, err := getHTTPConfig()
+	httpConfig, err := configs.GetHTTPConfig()
 	if err != nil {
 		log.Println(err)
 	}
@@ -28,123 +26,53 @@ func main() {
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", httpConfig.Port), nil))
 }
 
-func generateMocks(httpConfig *httpConfig) {
+func generateMocks(httpConfig *configs.HTTPConfig) {
 	for _, hc := range httpConfig.Resources {
-		var bodyHandle httpBody
-		if len(hc.Body) > 0 {
-			bodyHandle = &bodyStatic{body: hc.Body}
-		} else {
-			bodyHandle = &bodyFile{bodyPath: hc.BodyPath, contentType: hc.ContentType}
-		}
-		http.HandleFunc(hc.Path, generateHTTPHandle(bodyHandle, hc))
+		http.HandleFunc(hc.Path, generateHTTPHandle(hc))
 		log.Printf("Resource '%s' created. Method '%s'\n", hc.Path, hc.Method)
 	}
 }
 
-func generateHTTPHandle(bodyHandle httpBody, hc resource) func(w http.ResponseWriter, r *http.Request) {
-	b := bodyHandle
+func generateHTTPHandle(hc configs.Resource) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		bodyResp, err := b.get()
-		if err == nil {
-			if isImageHeader(hc.ContentType) {
-				img, _, err := image.Decode(bytes.NewReader(bodyResp.([]byte)))
-				if err != nil {
-					w.Header().Set("Content-Type", "text/plain")
-					w.WriteHeader(http.StatusInternalServerError)
-					fmt.Fprint(w, err)
-				}
-				buffer := new(bytes.Buffer)
-				if err := jpeg.Encode(buffer, img, nil); err != nil {
-					w.Header().Set("Content-Type", "text/plain")
-					w.WriteHeader(http.StatusInternalServerError)
-					fmt.Fprint(w, err)
-				}
-				if _, err := w.Write(buffer.Bytes()); err != nil {
-					w.Header().Set("Content-Type", "text/plain")
-					w.WriteHeader(http.StatusInternalServerError)
-					fmt.Fprint(w, err)
-				}
-			} else {
-				fmt.Fprint(w, bodyResp)
-			}
-			w.Header().Set("Content-Type", hc.ContentType)
-			w.WriteHeader(hc.Code)
+		if r.Method != strings.ToUpper(hc.Method) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		configResp := hc.GetResponse()
+		body, err := configResp.GetBody()
+		if err != nil {
+			returnInternalError(w, err)
+			return
+		}
+		if configResp.HasImageHeader() {
+			returnImage(w, body, &configResp)
 		} else {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, err)
+			w.WriteHeader(configResp.Code)
+			w.Header().Set("Content-Type", configResp.ContentType)
+			fmt.Fprint(w, body)
 		}
 	}
 }
 
-func getHTTPConfig() (*httpConfig, error) {
-	file, err := ioutil.ReadFile(os.Args[1])
+func returnInternalError(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprint(w, err)
+}
+
+func returnImage(w http.ResponseWriter, body interface{}, configResp *configs.Response) {
+	img, _, err := image.Decode(bytes.NewReader(body.([]byte)))
 	if err != nil {
-		return nil, errors.New("It was not possible to read configuration file - " + err.Error())
+		returnInternalError(w, err)
 	}
-	var config httpConfig
-	return &config, json.Unmarshal(file, &config) //TODO: do validation of json
-}
-
-type httpBody interface {
-	get() (interface{}, error)
-}
-
-type bodyStatic struct {
-	body  []string
-	pos   int
-	mutex sync.Mutex
-}
-
-func (b *bodyStatic) get() (interface{}, error) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	log.Println(b, len(b.body))
-	if b.pos >= len(b.body) {
-		b.pos = 0
+	buffer := new(bytes.Buffer)
+	if err := jpeg.Encode(buffer, img, nil); err != nil {
+		returnInternalError(w, err)
 	}
-	ret := b.body[b.pos]
-	b.pos++
-	return ret, nil
-}
-
-type bodyFile struct {
-	bodyPath    []string
-	pos         int
-	mutex       sync.Mutex
-	contentType string
-}
-
-func (b *bodyFile) get() (interface{}, error) {
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	if b.pos >= len(b.bodyPath) {
-		b.pos = 0
+	if _, err := w.Write(buffer.Bytes()); err != nil {
+		returnInternalError(w, err)
 	}
-	ret, err := ioutil.ReadFile(b.bodyPath[b.pos])
-	b.pos++
-	if isImageHeader(b.contentType) {
-		return ret, err
-	} else {
-		return string(ret), err
-	}
-}
-
-func isImageHeader(h string) bool {
-	return regexp.MustCompile("image/\\w+").MatchString(h)
-}
-
-type httpConfig struct {
-	Port      int
-	Resources []resource
-}
-
-type resource struct {
-	Name        string
-	Method      string
-	Path        string
-	ContentType string `json:"content-type"`
-	Code        int
-	Body        []string `json:"body,omitempty"`
-	BodyPath    []string `json:"path-body,omitempty"`
+	w.WriteHeader(configResp.Code)
+	w.Header().Set("Content-Type", configResp.ContentType)
 }

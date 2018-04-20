@@ -1,20 +1,19 @@
 {
-	"port": 9000,
-	"resources": [
-		{			
-			"name": "Recurso teste",
-			"method": "GET",
-			"path": "/teste",
-			"content-type": "application/json",
-			"body": ["{ \"lugar\": 1 }", "{ \"mano\": 2 }"],
-			"code": 200
-		},{			
-			"name": "Recurso teste II",
-			"method": "GET",
-			"path": "/teste2",
-			"content-type": "image/jpg",
-			"path-body": ["/tmp/teste.jpg"],
-			"code": 200
-		}
-	]
+    "port": 9001,
+    "resources": [{
+        "name": "Recurso teste",
+        "method": "GET",
+        "path": "/uolhost/accounts/list",
+        "responses": [{
+                "content-type": "application/json",
+                "body-path": "/tmp/get-backup.json",
+                "code": 200
+            },
+            {
+                "content-type": "application/json",
+                "body": "{ \"oi\": \"mano\" }",
+                "code": 200
+            }
+        ]
+    }]
 }
