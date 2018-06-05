@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"sync"
+	"fmt"
 )
 
 // GetHTTPConfig returns http-configs
@@ -21,8 +22,10 @@ func GetHTTPConfig() (*HTTPConfig, error) {
 		return nil, err
 	}
 	for i, resource := range config.Resources {
-		for j := range resource.Responses {
-			config.Resources[i].Responses[j].init()
+		for j := range resource.Methods {
+			for k := range resource.Methods[j].Responses {
+				config.Resources[i].Methods[j].Responses[k].init()
+			}
 		}
 	}
 	return &config, nil
@@ -36,12 +39,20 @@ type HTTPConfig struct {
 
 // Resource model
 type Resource struct {
-	Name      string
-	Method    string
 	Path      string
-	Responses []Response
-	pos       int
-	mutex     sync.Mutex
+	Methods []Method
+}
+
+type Method struct {
+	Name      string
+        Method    string
+        Responses []Response
+        pos       int
+        mutex     sync.Mutex
+}
+
+func (m Method) String() string {
+    return fmt.Sprintf(m.Method)
 }
 
 // Response model
@@ -62,7 +73,7 @@ func (r *Response) init() {
 }
 
 // GetResponse returns the body
-func (r *Resource) GetResponse() Response {
+func (r *Method) GetResponse() Response {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.pos >= len(r.Responses) {
