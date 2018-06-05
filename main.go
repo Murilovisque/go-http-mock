@@ -36,7 +36,9 @@ func generateHTTPHandle(hc configs.Resource) func(w http.ResponseWriter, r *http
 	return func(w http.ResponseWriter, r *http.Request) {
 		for i, resourceMethod := range hc.Methods {
 			if strings.ToUpper(resourceMethod.Method) == r.Method {
-				configResp := hc.Methods[i].GetResponse()
+				parameters := r.URL.Query()
+
+				configResp := hc.Methods[i].GetResponse(len(parameters) > 0)
 				body, err := configResp.GetBody()
 				if err != nil {
 					returnInternalError(w, err)

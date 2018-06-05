@@ -7,11 +7,13 @@
 	        "method": "GET",
         	"responses": [{
                 	"content-type": "application/json",
+			"parameter": true,
                 	"body-path": "/tmp/get-backup.json",
                 	"code": 200
             		},
             		{
                 	"content-type": "application/json",
+			"parameter": false,
                 	"body": "{ \"oi\": \"mano\" }",
                 	"code": 200
             		}
