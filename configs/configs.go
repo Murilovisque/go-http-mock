@@ -45,10 +45,10 @@ type Resource struct {
 
 type Method struct {
 	Name      string
-        Method    string
-        Responses []Response
-        pos       int
-        mutex     sync.Mutex
+	Method    string
+	Responses []Response
+	pos       int
+	mutex     sync.Mutex
 }
 
 func (m Method) String() string {
@@ -59,6 +59,7 @@ func (m Method) String() string {
 type Response struct {
 	ContentType string `json:"content-type"`
 	Code        int
+	Parameter   bool
 	Body        string `json:"body,omitempty"`
 	BodyPath    string `json:"body-path,omitempty"`
 	bodyhandler bodyhandler
@@ -73,15 +74,15 @@ func (r *Response) init() {
 }
 
 // GetResponse returns the body
-func (r *Method) GetResponse() Response {
+func (r *Method) GetResponse(hasParameter bool) Response {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	if r.pos >= len(r.Responses) {
-		r.pos = 0
+	for _, response := range r.Responses {
+		if response.Parameter == hasParameter {
+			return response
+		}
 	}
-	response := r.Responses[r.pos]
-	r.pos++
-	return response
+	return r.Responses[0]
 }
 
 // HasImageHeader check with header is image
