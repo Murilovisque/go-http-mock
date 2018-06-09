@@ -2,31 +2,59 @@
     "port": 9001,
     "resources": [{
         "path": "/uolhost/accounts/list",
-	"methods": [{
-		"name": "Recurso teste",
-	        "method": "GET",
-        	"responses": [{
-                	"content-type": "application/json",
-			"parameter": true,
-                	"body-path": "/tmp/get-backup.json",
-                	"code": 200
-            		},
-            		{
-                	"content-type": "application/json",
-			"parameter": false,
-                	"body": "{ \"oi\": \"mano\" }",
-                	"code": 200
-            		}
-		]},
-		{
-		"name": "Recurso teste POST",
-		"method": "POST",
-		"responses": [{
+        "methods": [{
+                "name": "Recurso teste GET",
+				"type": "GET",
+				"conversations": [{
+					"response": {
                         "content-type": "application/json",
+                        "body-path": "/tmp/get-backup.json",
+                        "code": 200
+                    }
+				}]
+            },
+            {
+                "name": "Recurso teste POST",
+				"type": "POST",
+				"conversations": [{
+					"response": {
+                        "content-type": "text/plain",
                         "body": "OK",
-                        "code": 201
-                        }
-		]}
-	]
-    }]
+                    	"code": 201
+                    }
+				}]                
+            }
+        ]
+    },{
+		"path": "/list/{param}",
+		"methods": [{
+			"name": "Recurso teste GET",
+			"type": "GET",
+			"conversations": [{
+				"request": {
+					"param-path": {
+						"name": "param",
+						"value": "legal"
+					}
+				},
+				"response": {
+					"content-type": "application/json",
+					"body": "{\"msg\": \"legal\"}",
+					"code": 200
+				}
+			},{
+				"request": {
+					"param-path": {
+						"name": "param",
+						"value": "foi"
+					}
+				},
+				"response": {
+					"content-type": "application/json",
+					"body": "{\"msg\": \"foi\"}",
+					"code": 200
+				}
+			}]
+		}]
+	}]
 }

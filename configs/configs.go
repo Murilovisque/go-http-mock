@@ -3,11 +3,15 @@ package configs
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"regexp"
-	"sync"
-	"fmt"
+	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 // GetHTTPConfig returns http-configs
@@ -21,13 +25,11 @@ func GetHTTPConfig() (*HTTPConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i, resource := range config.Resources {
-		for j := range resource.Methods {
-			for k := range resource.Methods[j].Responses {
-				config.Resources[i].Methods[j].Responses[k].init()
-			}
-		}
+	log.Printf("%#v", config)
+	for _, resource := range config.Resources {
+		resource.init()
 	}
+
 	return &config, nil
 }
 
@@ -39,50 +41,84 @@ type HTTPConfig struct {
 
 // Resource model
 type Resource struct {
-	Path      string
+	Path    string
 	Methods []Method
 }
 
+func (r *Resource) init() {
+	for i := range r.Methods {
+		r.Methods[i].Type = strings.ToUpper(r.Methods[i].Type)
+		for j := range r.Methods[i].Conversations {
+			resp := r.Methods[i].Conversations[j].Response
+			if resp.Body != "" {
+				resp.bodyhandler = staticBody{}
+			} else {
+				resp.bodyhandler = dynamicBody{}
+			}
+		}
+	}
+}
+
+// Response returns the body
+func (r *Resource) Response(req *http.Request) *Response {
+	for _, m := range r.Methods {
+		if m.Type == req.Method {
+			return m.Response(req, r.hasPathParam())
+		}
+	}
+	return nil
+}
+
+func (r *Resource) hasPathParam() bool {
+	return regexp.MustCompile(`\/[\w\-\/]*\{[\w\-]+\}([\w\-\/]|\{[\w\-]+\})*`).MatchString(r.Path)
+}
+
 type Method struct {
-	Name      string
-	Method    string
-	Responses []Response
-	pos       int
-	mutex     sync.Mutex
+	Name          string
+	Type          string
+	Conversations []Conversation
 }
 
 func (m Method) String() string {
-    return fmt.Sprintf(m.Method)
+	return fmt.Sprintf("Method: %s - Name: %s", m.Type, m.Name)
+}
+
+func (m *Method) Response(r *http.Request, hasPathParam bool) *Response {
+	params := mux.Vars(r)
+	for _, c := range m.Conversations {
+		if hasPathParam && c.Request != nil && c.Request.ParamPath != nil {
+			p := c.Request.ParamPath
+			if val, ok := params[p.Name]; ok && val == p.Value {
+				return c.Response
+			}
+		} else if !hasPathParam && (c.Request == nil || c.Request.ParamPath == nil) {
+			return c.Response
+		}
+	}
+	return nil
+}
+
+type Conversation struct {
+	Request  *Request
+	Response *Response
+}
+
+type Request struct {
+	ParamPath *Param `json:"param-path"`
+}
+
+type Param struct {
+	Name  string
+	Value string
 }
 
 // Response model
 type Response struct {
 	ContentType string `json:"content-type"`
 	Code        int
-	Parameter   bool
 	Body        string `json:"body,omitempty"`
 	BodyPath    string `json:"body-path,omitempty"`
 	bodyhandler bodyhandler
-}
-
-func (r *Response) init() {
-	if len(r.Body) > 0 {
-		r.bodyhandler = staticBody{}
-	} else {
-		r.bodyhandler = dynamicBody{}
-	}
-}
-
-// GetResponse returns the body
-func (r *Method) GetResponse(hasParameter bool) Response {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-	for _, response := range r.Responses {
-		if response.Parameter == hasParameter {
-			return response
-		}
-	}
-	return r.Responses[0]
 }
 
 // HasImageHeader check with header is image
@@ -111,7 +147,6 @@ func (d dynamicBody) getBody(r *Response) (interface{}, error) {
 	ret, err := ioutil.ReadFile(r.BodyPath)
 	if r.HasImageHeader() {
 		return ret, err
-	} else {
-		return string(ret), err
 	}
+	return string(ret), err
 }

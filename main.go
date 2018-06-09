@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
+
+	"github.com/gorilla/mux"
+
 	"github.com/Murilovisque/go-http-mock/configs"
 )
 
@@ -26,36 +28,31 @@ func main() {
 }
 
 func generateMocks(httpConfig *configs.HTTPConfig) {
+	r := mux.NewRouter()
 	for _, hc := range httpConfig.Resources {
-		http.HandleFunc(hc.Path, generateHTTPHandle(hc))
+		r.HandleFunc(hc.Path, generateHTTPHandle(hc))
 		log.Printf("Resource '%s' created. Methods '%s'\n", hc.Path, hc.Methods)
 	}
+	http.Handle("/", r)
 }
 
-func generateHTTPHandle(hc configs.Resource) func(w http.ResponseWriter, r *http.Request) {
+func generateHTTPHandle(resource configs.Resource) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		for i, resourceMethod := range hc.Methods {
-			if strings.ToUpper(resourceMethod.Method) == r.Method {
-				parameters := r.URL.Query()
-
-				configResp := hc.Methods[i].GetResponse(len(parameters) > 0)
-				body, err := configResp.GetBody()
-				if err != nil {
-					returnInternalError(w, err)
-					return
-				}
-				if configResp.HasImageHeader() {
-					returnImage(w, body, &configResp)
-				} else {
-					w.WriteHeader(configResp.Code)
-					w.Header().Set("Content-Type", configResp.ContentType)
-					fmt.Fprint(w, body)
-				}
-				return
-			}
+		response := resource.Response(r)
+		if response == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
 		}
-		w.WriteHeader(http.StatusNotFound)
-                return
+		body, err := response.GetBody()
+		if err != nil {
+			returnInternalError(w, err)
+		} else if response.HasImageHeader() {
+			returnImage(w, body, response)
+		} else {
+			w.WriteHeader(response.Code)
+			w.Header().Set("Content-Type", response.ContentType)
+			fmt.Fprint(w, body)
+		}
 	}
 }
 
