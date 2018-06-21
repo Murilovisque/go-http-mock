@@ -1,14 +1,14 @@
 {
     "port": 9001,
     "resources": [{
-        "path": "/uolhost/accounts/list",
+        "path": "/list",
         "methods": [{
                 "name": "Recurso teste GET",
 				"type": "GET",
 				"conversations": [{
 					"response": {
                         "content-type": "application/json",
-                        "body-path": "/tmp/get-backup.json",
+                        "body-path": "/tmp/some-backup.json",
                         "code": 200
                     }
 				}]
@@ -28,11 +28,11 @@
     },{
 		"path": "/list/{param}",
 		"methods": [{
-			"name": "Recurso teste GET",
+			"name": "Recurso teste GET com parâmetro no path",
 			"type": "GET",
 			"conversations": [{
 				"request": {
-					"param-path": {
+					"path-param": {
 						"name": "param",
 						"value": "legal"
 					}
@@ -44,7 +44,7 @@
 				}
 			},{
 				"request": {
-					"param-path": {
+					"path-param": {
 						"name": "param",
 						"value": "foi"
 					}
@@ -56,5 +56,38 @@
 				}
 			}]
 		}]
-	}]
+	},{
+        "path": "/search",
+        "methods": [{
+                "name": "Recurso teste GET com query param",
+				"type": "GET",
+				"conversations": [{
+					"request": {
+						"query-param": [{
+							"name": "num",
+							"value": ["1"]
+						}]
+					},
+					"response": {
+                        "content-type": "application/json",
+                        "body": "{\"conta\": \"1\"}",
+                        "code": 200
+                    }
+				},{
+					"request": {
+						"query-param": [{
+							"name": "num",
+							"value": ["2"]
+						}]
+					},
+					"response": {
+						"content-type": "application/json",
+						"body": "{\"conta\": \"2\"}",
+						"code": 200
+					}
+				}]
+            }]
+		}
+    ]
+    
 }

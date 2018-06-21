@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -25,7 +24,6 @@ func GetHTTPConfig() (*HTTPConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("%#v", config)
 	for _, resource := range config.Resources {
 		resource.init()
 	}
@@ -49,7 +47,7 @@ func (r *Resource) init() {
 	for i := range r.Methods {
 		r.Methods[i].Type = strings.ToUpper(r.Methods[i].Type)
 		for j := range r.Methods[i].Conversations {
-			resp := r.Methods[i].Conversations[j].Response
+			resp := &r.Methods[i].Conversations[j].Response
 			if resp.Body != "" {
 				resp.bodyhandler = staticBody{}
 			} else {
@@ -84,32 +82,75 @@ func (m Method) String() string {
 }
 
 func (m *Method) Response(r *http.Request, hasPathParam bool) *Response {
-	params := mux.Vars(r)
+	var conversations []Conversation
+	pathParams := mux.Vars(r)
 	for _, c := range m.Conversations {
-		if hasPathParam && c.Request != nil && c.Request.ParamPath != nil {
-			p := c.Request.ParamPath
-			if val, ok := params[p.Name]; ok && val == p.Value {
-				return c.Response
+		if hasPathParam && c.Request.hasPathParam() { //TODO: Multiple path params
+			p := c.Request.PathParam
+			if val, ok := pathParams[p.Name]; ok && val == p.Value {
+				conversations = append(conversations, c)
 			}
-		} else if !hasPathParam && (c.Request == nil || c.Request.ParamPath == nil) {
-			return c.Response
+		} else if !hasPathParam && !c.Request.hasPathParam() {
+			conversations = append(conversations, c)
+		}
+	}
+	if len(conversations) == 0 {
+		return nil
+	}
+	queryParams := r.URL.Query()
+	if len(queryParams) == 0 {
+		for _, c := range conversations {
+			if len(c.Request.QueryParams) == 0 {
+				return &c.Response
+			}
+		}
+		return nil
+	}
+	for _, c := range conversations {
+	conv:
+		for _, paramToFind := range c.Request.QueryParams {
+			if val, ok := queryParams[paramToFind.Name]; ok {
+				for _, valReceived := range val {
+					var found bool
+					for _, valToFind := range paramToFind.Value {
+						if valReceived == valToFind {
+							found = true
+							break
+						}
+					}
+					if !found {
+						continue conv
+					}
+				}
+				return &c.Response
+			}
 		}
 	}
 	return nil
 }
 
 type Conversation struct {
-	Request  *Request
-	Response *Response
+	Request  Request `json:"request,omitempty"`
+	Response Response
 }
 
 type Request struct {
-	ParamPath *Param `json:"param-path"`
+	PathParam   Param              `json:"path-param,omitempty"`
+	QueryParams []ParamMultiValues `json:"query-param,omitempty"`
+}
+
+func (r *Request) hasPathParam() bool {
+	return r.PathParam.Name != ""
 }
 
 type Param struct {
 	Name  string
 	Value string
+}
+
+type ParamMultiValues struct {
+	Name  string
+	Value []string
 }
 
 // Response model
