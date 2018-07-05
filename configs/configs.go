@@ -106,25 +106,15 @@ func (m *Method) Response(r *http.Request, hasPathParam bool) *Response {
 		}
 		return nil
 	}
+
+conv:
 	for _, c := range conversations {
-	conv:
-		for _, paramToFind := range c.Request.QueryParams {
-			if val, ok := queryParams[paramToFind.Name]; ok {
-				for _, valReceived := range val {
-					var found bool
-					for _, valToFind := range paramToFind.Value {
-						if valReceived == valToFind {
-							found = true
-							break
-						}
-					}
-					if !found {
-						continue conv
-					}
-				}
-				return &c.Response
+		for paramKey, paramVals := range queryParams {
+			if !c.Request.matchQueryValues(paramKey, paramVals) {
+				continue conv
 			}
 		}
+		return &c.Response
 	}
 	return nil
 }
@@ -141,6 +131,27 @@ type Request struct {
 
 func (r *Request) hasPathParam() bool {
 	return r.PathParam.Name != ""
+}
+
+func (r *Request) matchQueryValues(queryParam string, valuesParam []string) bool {
+	for _, v := range r.QueryParams {
+		if queryParam == v.Name {
+			for _, valueParam := range valuesParam {
+				var matchValue bool
+				for _, ValueReq := range v.Value {
+					if valueParam == ValueReq {
+						matchValue = true
+						break
+					}
+				}
+				if !matchValue {
+					return false
+				}
+			}
+			return true
+		}
+	}
+	return false
 }
 
 type Param struct {

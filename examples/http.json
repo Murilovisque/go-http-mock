@@ -85,6 +85,21 @@
 						"body": "{\"conta\": \"2\"}",
 						"code": 200
 					}
+				},{
+					"request": {
+						"query-param": [{
+							"name": "num",
+							"value": ["2"]
+						},{
+							"name": "plus",
+							"value": ["2"]
+						}]
+					},
+					"response": {
+						"content-type": "application/json",
+						"body": "{\"conta\": \"4\"}",
+						"code": 200
+					}
 				}]
             }]
 		}
