@@ -98,3 +98,57 @@ We can configure a path parameter and the response depends of the parameter valu
     }]
 }
 ```
+We can configure a query parameters and the response depends of the quey values
+```json
+{
+    "port": 9001,
+    "resources": [{
+        "path": "/accounts/search",
+        "methods": [{
+                "name": "Recurso teste GET com query param",
+				"type": "GET",
+				"conversations": [{
+					"request": {
+						"query-param": [{
+							"name": "num",
+							"value": ["1"]
+						}]
+					},
+					"response": {
+                        "content-type": "application/json",
+                        "body": "{\"conta\": \"1\"}",
+                        "code": 200
+                    }
+				},{
+					"request": {
+						"query-param": [{
+							"name": "num",
+							"value": ["2"]
+						}]
+					},
+					"response": {
+						"content-type": "application/json",
+						"body": "{\"conta\": \"2\"}",
+						"code": 200
+					}
+				},{
+					"request": {
+						"query-param": [{
+							"name": "num",
+							"value": ["2"]
+						},{
+							"name": "plus",
+							"value": ["2"]
+						}]
+					},
+					"response": {
+						"content-type": "application/json",
+						"body": "{\"conta\": \"4\"}",
+						"code": 200
+					}
+				}]
+            }]
+		}
+    ]
+}
+```
