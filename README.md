@@ -27,7 +27,6 @@ It is necessary to create a json configuration file. Bellow is a example:
 ```
 
 We can configure several resource paths to serve. A resource struct has a list of different methods and a path which will serve
-
 ```json
 {
     "port": 9001,
@@ -59,7 +58,44 @@ We can configure several resource paths to serve. A resource struct has a list o
     }]
 }
 ```
-We can configure a path parameter and the response depends of the parameter value
+
+We can set the body of response directly in json file or to other file's content
+```json
+{
+    "port": 9001,
+    "resources": [{
+        "path": "/cars",
+        "methods": [{
+                "name": "A resource to get cars",
+                "type": "GET",
+                "conversations": [{
+                    "response": {
+                        "content-type": "application/json",
+                        "body": "{ \"car\": \"fusca\" }",
+                        "code": 200
+                    }
+                }]
+            }
+        ]
+    },{
+        "path": "/jobs",
+        "methods": [{
+                "name": "A resource to get jobs",
+                "type": "GET",
+                "conversations": [{
+                    "response": {
+                        "content-type": "application/json",
+                        "body-path": "/tmp/jobs.json",
+                        "code": 200
+                    }
+                }]
+            }
+        ]
+    }]
+}
+```
+
+We can configure path parameters and the response depends on these parameters value
 ```json
 {
     "port": 9001,
@@ -70,10 +106,10 @@ We can configure a path parameter and the response depends of the parameter valu
                 "type": "GET",
                 "conversations": [{
                     "request": {
-                        "path-param": {
+                        "path-param": [{
                             "name": "param",
                             "value": "1"
-                        }
+                        }]
                     },
                     "response": {
                         "content-type": "application/json",
@@ -82,10 +118,10 @@ We can configure a path parameter and the response depends of the parameter valu
                     }
                 },{
                     "request": {
-                        "path-param": {
+                        "path-param": [{
                             "name": "param",
                             "value": "2"
-                        }
+                        }]
                     },
                     "response": {
                         "content-type": "application/json",
@@ -98,7 +134,8 @@ We can configure a path parameter and the response depends of the parameter valu
     }]
 }
 ```
-We can configure a query parameters and the response depends of the quey values
+
+We can configure query parameters and the response depends on these quey values
 ```json
 {
     "port": 9001,

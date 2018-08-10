@@ -32,10 +32,10 @@
 			"type": "GET",
 			"conversations": [{
 				"request": {
-					"path-param": {
+					"path-param": [{
 						"name": "param",
 						"value": "legal"
-					}
+					}]
 				},
 				"response": {
 					"content-type": "application/json",
@@ -44,14 +44,51 @@
 				}
 			},{
 				"request": {
-					"path-param": {
+					"path-param": [{
 						"name": "param",
 						"value": "foi"
-					}
+					}]
 				},
 				"response": {
 					"content-type": "application/json",
 					"body": "{\"msg\": \"foi\"}",
+					"code": 200
+				}
+			}]
+		}]
+	},{
+		"path": "/list/{param}/{param2}",
+		"methods": [{
+			"name": "Recurso teste GET com parâmetro no path",
+			"type": "GET",
+			"conversations": [{
+				"request": {
+					"path-param": [{
+						"name": "param",
+						"value": "legal"
+					},{
+						"name": "param2",
+						"value": "legal2"
+					}]
+				},
+				"response": {
+					"content-type": "application/json",
+					"body": "{\"msg\": \"legal2\"}",
+					"code": 200
+				}
+			},{
+				"request": {
+					"path-param": [{
+						"name": "param",
+						"value": "foi"
+					},{
+						"name": "param2",
+						"value": "foi2"
+					}]
+				},
+				"response": {
+					"content-type": "application/json",
+					"body": "{\"msg\": \"foi2\"}",
 					"code": 200
 				}
 			}]

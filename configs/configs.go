@@ -85,9 +85,8 @@ func (m *Method) Response(r *http.Request, hasPathParam bool) *Response {
 	var conversations []Conversation
 	pathParams := mux.Vars(r)
 	for _, c := range m.Conversations {
-		if hasPathParam && c.Request.hasPathParam() { //TODO: Multiple path params
-			p := c.Request.PathParam
-			if val, ok := pathParams[p.Name]; ok && val == p.Value {
+		if hasPathParam && c.Request.hasPathParam() {
+			if c.Request.matchPathParam(pathParams) {
 				conversations = append(conversations, c)
 			}
 		} else if !hasPathParam && !c.Request.hasPathParam() {
@@ -109,6 +108,9 @@ func (m *Method) Response(r *http.Request, hasPathParam bool) *Response {
 
 conv:
 	for _, c := range conversations {
+		if len(queryParams) != len(c.Request.QueryParams) {
+			continue conv
+		}
 		for paramKey, paramVals := range queryParams {
 			if !c.Request.matchQueryValues(paramKey, paramVals) {
 				continue conv
@@ -125,12 +127,24 @@ type Conversation struct {
 }
 
 type Request struct {
-	PathParam   Param              `json:"path-param,omitempty"`
+	PathParam   []Param            `json:"path-param,omitempty"`
 	QueryParams []ParamMultiValues `json:"query-param,omitempty"`
 }
 
 func (r *Request) hasPathParam() bool {
-	return r.PathParam.Name != ""
+	return len(r.PathParam) > 0
+}
+
+func (r *Request) matchPathParam(params map[string]string) bool {
+	if len(r.PathParam) != len(params) {
+		return false
+	}
+	for _, p := range r.PathParam {
+		if v, ok := params[p.Name]; !ok || p.Value != v {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *Request) matchQueryValues(queryParam string, valuesParam []string) bool {
