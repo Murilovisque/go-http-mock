@@ -48,10 +48,10 @@ func (r *Resource) init() {
 		r.Methods[i].Type = strings.ToUpper(r.Methods[i].Type)
 		for j := range r.Methods[i].Conversations {
 			resp := &r.Methods[i].Conversations[j].Response
-			if resp.Body != "" {
-				resp.bodyhandler = staticBody{}
-			} else {
+			if resp.BodyPath != "" {
 				resp.bodyhandler = dynamicBody{}
+			} else {
+				resp.bodyhandler = staticBody{}
 			}
 		}
 	}
